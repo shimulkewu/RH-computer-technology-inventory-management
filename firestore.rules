@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Catch-All Safety Net (Default Deny Gate)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reuseable global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 2. Validation Blueprints (Anti-Update-Gap Helpers)
+    function isValidProduct(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.barcode is string && data.barcode.size() <= 100
+        && data.description is string && data.description.size() <= 2000
+        && data.category is string && data.category.size() <= 100
+        && data.costPrice is number && data.costPrice >= 0
+        && data.salePrice is number && data.salePrice >= 0
+        && data.quantity is number
+        && data.minStockThreshold is number && data.minStockThreshold >= 0
+        && data.updatedAt is string && data.updatedAt.size() <= 50
+        && data.updatedBy is string && data.updatedBy.size() <= 100;
+    }
+
+    function isValidAuditLog(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.productId is string && data.productId.size() <= 128
+        && data.productName is string && data.productName.size() <= 200
+        && data.type is string && (data.type == 'STOCK_IN' || data.type == 'STOCK_OUT' || data.type == 'SALE' || data.type == 'ADJUSTMENT' || data.type == 'CREATE' || data.type == 'DELETE')
+        && data.delta is number
+        && data.quantityAfter is number
+        && data.employeeName is string && data.employeeName.size() <= 100
+        && data.timestamp is string && data.timestamp.size() <= 50;
+    }
+
+    function isValidSale(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.items is list && data.items.size() <= 100
+        && data.totalAmount is number && data.totalAmount >= 0
+        && data.profit is number
+        && data.employeeName is string && data.employeeName.size() <= 100
+        && data.timestamp is string && data.timestamp.size() <= 50;
+    }
+
+    // 3. Products Pattern Rules
+    match /products/{productId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn()
+                    && isValidId(productId)
+                    && isValidProduct(incoming())
+                    && incoming().id == productId;
+      
+      allow update: if isSignedIn()
+                    && isValidProduct(incoming())
+                    && incoming().id == productId;
+      
+      allow delete: if isSignedIn();
+    }
+
+    // 4. AuditLogs Pattern Rules
+    match /auditLogs/{logId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn()
+                    && isValidId(logId)
+                    && isValidAuditLog(incoming())
+                    && incoming().id == logId;
+      
+      allow update, delete: if false; // Audit logs are immutable records
+    }
+
+    // 5. Sales Pattern Rules
+    match /sales/{saleId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn()
+                    && isValidId(saleId)
+                    && isValidSale(incoming())
+                    && incoming().id == saleId;
+      
+      allow update, delete: if false; // Receipts are immutable historical checkpoints
+    }
+  }
+}

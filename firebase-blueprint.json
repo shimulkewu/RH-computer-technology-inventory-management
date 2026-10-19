@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "An inventory item in RH Computer Technology",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique product UUID" },
+        "name": { "type": "string", "description": "Product name" },
+        "barcode": { "type": "string", "description": "Barcode scan code" },
+        "description": { "type": "string", "description": "Product descriptions and specifications" },
+        "category": { "type": "string", "description": "Product catalog category" },
+        "costPrice": { "type": "number", "description": "Cost price of item in RM" },
+        "salePrice": { "type": "number", "description": "Standard retail sell price in RM" },
+        "quantity": { "type": "number", "description": "Current on-hand aggregate quantity" },
+        "minStockThreshold": { "type": "number", "description": "Minimum threshold level before real-time warning alerts trigger" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "ISO timestamp of last update" },
+        "updatedBy": { "type": "string", "description": "Name of employee who executed the change" }
+      },
+      "required": ["id", "name", "barcode", "costPrice", "salePrice", "quantity", "minStockThreshold", "updatedAt", "updatedBy"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Historical transactional audit logging for stock-ins, stock-outs, and modifications",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique log ID" },
+        "productId": { "type": "string", "description": "ID of related product" },
+        "productName": { "type": "string", "description": "Visual snapshot name of the product" },
+        "type": { "type": "string", "enum": ["STOCK_IN", "STOCK_OUT", "SALE", "ADJUSTMENT", "CREATE", "DELETE"], "description": "Log transaction type" },
+        "delta": { "type": "number", "description": "The quantity difference" },
+        "quantityAfter": { "type": "number", "description": "Remaining quantity in stock after operation" },
+        "employeeName": { "type": "string", "description": "The signature name of the employee updating the stock" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Timestamp when transaction was recorded" },
+        "notes": { "type": "string", "description": "Optional memo explaining transaction reasoning" }
+      },
+      "required": ["id", "productId", "productName", "type", "delta", "quantityAfter", "employeeName", "timestamp"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Store receipt itemizations of historical retail transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique receipt ticket ID" },
+        "items": { "type": "array", "description": "List of sold items in transaction" },
+        "totalAmount": { "type": "number", "description": "Total RM receipts sum paid" },
+        "profit": { "type": "number", "description": "Gross margin profit RM made on sale" },
+        "employeeName": { "type": "string", "description": "The employee serving coordinates" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Date checkout happened" }
+      },
+      "required": ["id", "items", "totalAmount", "profit", "employeeName", "timestamp"]
+    }
+  },
+  "firestore": {
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Products list inventory catalog"
+    },
+    "auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Full chronological audits of inventory updates"
+    },
+    "sales/{saleId}": {
+      "schema": "Sale",
+      "description": "Historical customer checkouts list"
+    }
+  }
+}
